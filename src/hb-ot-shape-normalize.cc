@@ -100,6 +100,13 @@ compose_unicode (const hb_ot_shape_normalize_context_t *c,
   return c->unicode->compose (a, b, ab);
 }
 
+static inline bool
+is_whitespace (const hb_glyph_info_t &info)
+{
+  return HB_UNICODE_GENERAL_CATEGORY_IS_SEPARATOR (_hb_glyph_info_get_general_category (&info)) ||
+	 hb_in_range (info.codepoint, 0x0009u, 0x000Du) || info.codepoint == 0x0085u;
+}
+
 static inline void
 set_glyph (hb_glyph_info_t &info, hb_font_t *font)
 {
@@ -198,7 +205,7 @@ decompose_current_character (const hb_ot_shape_normalize_context_t *c, bool shor
 {
   hb_buffer_t * const buffer = c->buffer;
   hb_codepoint_t u = buffer->cur().codepoint;
-  hb_codepoint_t glyph;
+  hb_codepoint_t glyph, space_glyph;
 
   /* Kind of a cute waterfall here... */
   if (shortest && c->font->get_glyph (u, 0, &glyph))
@@ -209,6 +216,8 @@ decompose_current_character (const hb_ot_shape_normalize_context_t *c, bool shor
     next_char (buffer, glyph);
   else if (decompose_compatibility (c, u))
     skip_char (buffer);
+  else if (is_whitespace (buffer->cur()) && c->font->get_glyph (0x0020u, 0, &space_glyph))
+    next_char (buffer, space_glyph); /* http://unicode.org/faq/unsup_char.html */
   else
     next_char (buffer, glyph); /* glyph is initialized in earlier branches. */
 }
